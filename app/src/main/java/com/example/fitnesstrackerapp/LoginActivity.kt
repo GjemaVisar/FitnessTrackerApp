@@ -13,7 +13,7 @@ class LoginActivity : AppCompatActivity() {
         setContentView(R.layout.activity_login)
 
         val btnLogin = findViewById<Button>(R.id.btnLogin)
-        val tvSignUp = findViewById<TextView>(R.id.tvSignUp)
+        val tvSignUp = findViewById<TextView>(R.id.btnSignUp)
 
         btnLogin.setOnClickListener {
             // TODO: Implement login logic
