@@ -1,4 +1,4 @@
-package com.example.fitnesstrackerapp
+package com.example.fitnesstrackerapp.views
 
 import android.content.Intent
 import android.os.Bundle
