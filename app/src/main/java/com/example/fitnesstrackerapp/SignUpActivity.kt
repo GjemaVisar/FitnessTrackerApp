@@ -3,80 +3,60 @@ package com.example.fitnesstrackerapp
 import android.content.Intent
 import android.os.Bundle
 import android.widget.*
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.Observer
+import androidx.lifecycle.ViewModelProvider
+import com.example.fitnesstrackerapp.viewmodel.AuthViewModel
+import com.example.fitnesstrackerapp.viewmodel.AuthViewModelFactory
 import com.example.fitnesstrackerapp.data.database.AppDatabase
-import com.example.fitnesstrackerapp.data.dao.UserDao
-import com.example.fitnesstrackerapp.data.entities.User
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import org.mindrot.jbcrypt.BCrypt
 
 class SignUpActivity : AppCompatActivity() {
 
-    private lateinit var userDao: UserDao
-    private lateinit var etEmail: EditText
-    private lateinit var etPassword: EditText
-    private lateinit var etConfirmPassword: EditText
-    private lateinit var btnSignUp: Button
-    private lateinit var tvLogin: TextView
+    private val authViewModel: AuthViewModel by lazy {
+        ViewModelProvider(
+            this,
+            AuthViewModelFactory(AppDatabase.getDatabase(this).userDao())
+        ).get(AuthViewModel::class.java)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_sign_up)
 
-        // Initialize UI elements
-        etEmail = findViewById(R.id.etEmail)
-        etPassword = findViewById(R.id.etPassword)
-        etConfirmPassword = findViewById(R.id.etConfirmPassword)
-        btnSignUp = findViewById(R.id.btnSignUp)
-        tvLogin = findViewById(R.id.tvLogin)
-
-        // Initialize Room Database
-        val db = AppDatabase.getDatabase(this)
-        userDao = db.userDao()
+        val etEmail = findViewById<EditText>(R.id.etEmail)
+        val etPassword = findViewById<EditText>(R.id.etPassword)
+        val etConfirmPassword = findViewById<EditText>(R.id.etConfirmPassword)
+        val btnSignUp = findViewById<Button>(R.id.btnSignUp)
+        val btnLogin = findViewById<TextView>(R.id.btnLogin)
 
         btnSignUp.setOnClickListener {
             val email = etEmail.text.toString().trim()
             val password = etPassword.text.toString().trim()
             val confirmPassword = etConfirmPassword.text.toString().trim()
-
-            if (email.isEmpty() || password.isEmpty() || confirmPassword.isEmpty()) {
-                Toast.makeText(this, "All fields are required!", Toast.LENGTH_SHORT).show()
-            } else if (password != confirmPassword) {
-                Toast.makeText(this, "Passwords do not match!", Toast.LENGTH_SHORT).show()
-            } else {
-                registerUser(email, password)
-            }
+            authViewModel.validateRegister(email, password, confirmPassword)
         }
 
-        tvLogin.setOnClickListener {
-            startActivity(Intent(this, LoginActivity::class.java))
-        }
-    }
+        authViewModel.emailError.observe(this, Observer { error ->
+            etEmail.error = error
+        })
 
-    private fun registerUser(email: String, password: String) {
-        lifecycleScope.launch(Dispatchers.IO) {
-            val existingUser = userDao.getUserByEmail(email)
+        authViewModel.passwordError.observe(this, Observer { error ->
+            etPassword.error = error
+        })
 
-            if (existingUser != null) {
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(this@SignUpActivity, "Email already registered!", Toast.LENGTH_SHORT).show()
-                }
-                return@launch
-            }
-
-            val hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt()) // Hash password
-            val newUser = User(email = email, password = hashedPassword)
-
-            userDao.insertUser(newUser)
-
-            withContext(Dispatchers.Main) {
-                Toast.makeText(this@SignUpActivity, "User successfully registered!", Toast.LENGTH_SHORT).show()
-                startActivity(Intent(this@SignUpActivity, LoginActivity::class.java))
+        authViewModel.registerSuccess.observe(this, Observer { success ->
+            if (success) {
+                Toast.makeText(this, "User successfully registered!", Toast.LENGTH_SHORT).show()
+                startActivity(Intent(this, LoginActivity::class.java))
                 finish()
+            } else {
+                Toast.makeText(this, "Registration failed! Email may already be used.", Toast.LENGTH_SHORT).show()
             }
+        })
+
+        btnLogin.setOnClickListener {
+            startActivity(Intent(this, LoginActivity::class.java))
         }
     }
 }
