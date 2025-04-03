@@ -17,4 +17,10 @@
     <string name="name_hint">Full Name</string>
     <string name="confirm_password_hint">Confirm Password</string>
     <string name="have_account">Already have an account?</string>
+
+    <string name="profile_title">My Profile</string>
+    <string name="profile_image">Profile image</string>
+    <string name="name_label">Name</string>
+    <string name="email_label">Email</string>
+    <string name="edit_profile">Edit Profile</string>
 </resources>

@@ -1,22 +1,25 @@
-package com.example.fitnesstrackerapp
+package com.example.fitnesstrackerapp.views
 
 import android.content.Intent
 import android.os.Bundle
-import android.widget.*
-import androidx.activity.viewModels
+import android.widget.Button
+import android.widget.EditText
+import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
+import com.example.fitnesstrackerapp.R
+import com.example.fitnesstrackerapp.data.database.AppDatabase
 import com.example.fitnesstrackerapp.viewmodel.AuthViewModel
 import com.example.fitnesstrackerapp.viewmodel.AuthViewModelFactory
-import com.example.fitnesstrackerapp.data.database.AppDatabase
 
 class SignUpActivity : AppCompatActivity() {
 
     private val authViewModel: AuthViewModel by lazy {
         ViewModelProvider(
             this,
-            AuthViewModelFactory(AppDatabase.getDatabase(this).userDao())
+            AuthViewModelFactory(AppDatabase.Companion.getDatabase(this).userDao())
         ).get(AuthViewModel::class.java)
     }
 
@@ -51,7 +54,11 @@ class SignUpActivity : AppCompatActivity() {
                 startActivity(Intent(this, LoginActivity::class.java))
                 finish()
             } else {
-                Toast.makeText(this, "Registration failed! Email may already be used.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    this,
+                    "Registration failed! Email may already be used.",
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         })
 

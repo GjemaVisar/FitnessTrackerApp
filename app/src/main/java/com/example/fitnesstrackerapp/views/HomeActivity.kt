@@ -1,10 +1,9 @@
-package com.example.fitnesstrackerapp
+package com.example.fitnesstrackerapp.views
 
 import android.content.Intent
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import com.example.fitnesstrackerapp.databinding.ActivityHomeBinding
-import com.example.fitnesstrackerapp.LoginActivity
 
 class HomeActivity : AppCompatActivity() {
     private lateinit var binding: ActivityHomeBinding
