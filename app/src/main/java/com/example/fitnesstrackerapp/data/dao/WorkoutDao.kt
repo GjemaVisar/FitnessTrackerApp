@@ -10,4 +10,11 @@ interface WorkoutDao {
 
     @Query("SELECT * FROM workouts WHERE user_id = :userId")
     suspend fun getWorkoutsByUser(userId: Int): List<Workout>
+
+    @Update
+    suspend fun updateWorkout(workout: Workout)
+
+    @Delete
+    suspend fun deleteWorkout(workout: Workout)
+
 }
