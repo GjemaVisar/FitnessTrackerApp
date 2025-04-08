@@ -83,7 +83,12 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintWidth_percent="0.8"
         android:layout_marginTop="16dp"
-        app:endIconMode="password_toggle">
+        app:endIconMode="password_toggle"
+        app:errorIconDrawable="@null"
+        app:errorEnabled="true"
+        app:endIconTint="@color/on_surface_variant"
+        app:boxStrokeErrorColor="@color/error"
+        app:errorTextColor="@color/error">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/etPassword"
