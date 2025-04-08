@@ -26,7 +26,9 @@ class AuthViewModel(private val userDao: UserDao) : ViewModel() {
     val registerSuccess: LiveData<Boolean> get() = _registerSuccess
 
     fun validateLogin(email: String, password: String) {
-        _emailError.value = if (!ValidationUtils.isValidEmail(email)) "Invalid email format" else null
+        _emailError.value = if (email.isEmpty()) "Email cannot be empty"
+        else if (!ValidationUtils.isValidEmail(email)) "Invalid email format" else null
+
         _passwordError.value = if (password.isEmpty()) "Password cannot be empty" else null
 
         if (_emailError.value == null && _passwordError.value == null) {
@@ -47,26 +49,36 @@ class AuthViewModel(private val userDao: UserDao) : ViewModel() {
     }
 
     fun validateRegister(email: String, password: String, confirmPassword: String) {
-        _emailError.value = if (!ValidationUtils.isValidEmail(email)) "Invalid email format" else null
-        _passwordError.value = if (!ValidationUtils.isValidPassword(password))
-            "Password must be 8+ characters, 1 uppercase, 1 number" else null
+        _emailError.value = when {
+            email.isEmpty() -> "Email cannot be empty"
+            !ValidationUtils.isValidEmail(email) -> "Invalid email format"
+            else -> null
+        }
 
-        if (password != confirmPassword) {
-            _passwordError.value = "Passwords do not match"
+        _passwordError.value = when {
+            password.isEmpty() -> "Password cannot be empty"
+            password.length < 8 -> "Password must be at least 8 characters"
+            !ValidationUtils.isValidPassword(password) -> "Password must be 8+ characters, 1 uppercase, 1 number, 1 special character"
+            password != confirmPassword -> "Passwords do not match"
+            else -> null
         }
 
         if (_emailError.value == null && _passwordError.value == null) {
-            registerUser(email, password)
+            checkDuplicateEmailAndRegister(email, password)
         }
     }
 
-    private fun registerUser(email: String, password: String) {
+    private fun checkDuplicateEmailAndRegister(email: String, password: String) {
         viewModelScope.launch(Dispatchers.IO) {
-            val hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt())
-
-            val user = User(email = email, password = hashedPassword)
-            userDao.insertUser(user)
-            _registerSuccess.postValue(true)
+            val existingUser = userDao.getUserByEmail(email)
+            if (existingUser != null) {
+                _emailError.postValue("Email is already taken")
+            } else {
+                val hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt())
+                val user = User(email = email, password = hashedPassword)
+                userDao.insertUser(user)
+                _registerSuccess.postValue(true)
+            }
         }
     }
 }
