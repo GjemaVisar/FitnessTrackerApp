@@ -33,13 +33,6 @@ class SignUpActivity : AppCompatActivity() {
         val btnSignUp = findViewById<Button>(R.id.btnSignUp)
         val btnLogin = findViewById<TextView>(R.id.btnLogin)
 
-        btnSignUp.setOnClickListener {
-            val email = etEmail.text.toString().trim()
-            val password = etPassword.text.toString().trim()
-            val confirmPassword = etConfirmPassword.text.toString().trim()
-            authViewModel.validateRegister(email, password, confirmPassword)
-        }
-
         authViewModel.emailError.observe(this, Observer { error ->
             etEmail.error = error
         })
@@ -50,17 +43,19 @@ class SignUpActivity : AppCompatActivity() {
 
         authViewModel.registerSuccess.observe(this, Observer { success ->
             if (success) {
-                Toast.makeText(this, "User successfully registered!", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Registration successful!", Toast.LENGTH_SHORT).show()
                 startActivity(Intent(this, LoginActivity::class.java))
-                finish()
             } else {
-                Toast.makeText(
-                    this,
-                    "Registration failed! Email may already be used.",
-                    Toast.LENGTH_SHORT
-                ).show()
+                Toast.makeText(this, "Registration failed! Email may already be used.", Toast.LENGTH_SHORT).show()
             }
         })
+
+        btnSignUp.setOnClickListener {
+            val email = etEmail.text.toString().trim()
+            val password = etPassword.text.toString().trim()
+            val confirmPassword = etConfirmPassword.text.toString().trim()
+            authViewModel.validateRegister(email, password, confirmPassword)
+        }
 
         btnLogin.setOnClickListener {
             startActivity(Intent(this, LoginActivity::class.java))

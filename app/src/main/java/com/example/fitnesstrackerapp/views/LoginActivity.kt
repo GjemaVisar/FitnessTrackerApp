@@ -15,6 +15,7 @@ import com.example.fitnesstrackerapp.viewmodel.AuthViewModel
 import com.example.fitnesstrackerapp.viewmodel.AuthViewModelFactory
 import kotlinx.coroutines.*
 import com.example.fitnesstrackerapp.auth.SessionManager
+import org.mindrot.jbcrypt.BCrypt
 
 class LoginActivity : AppCompatActivity() {
 
@@ -50,9 +51,8 @@ class LoginActivity : AppCompatActivity() {
 
         authViewModel.loginSuccess.observe(this, Observer { success ->
             if (success) {
-                Toast.makeText(this, "Login Successful!", Toast.LENGTH_SHORT).show()
                 val email = etEmail.text.toString().trim()
-
+                val password = etPassword.text.toString().trim()
 
                 CoroutineScope(Dispatchers.IO).launch {
                     val user = AppDatabase.getDatabase(this@LoginActivity)
@@ -60,16 +60,20 @@ class LoginActivity : AppCompatActivity() {
                         .getUserByEmail(email)
 
                     user?.let {
-                        val session = SessionManager.getInstance(this@LoginActivity)
-                        session.currentUserId = it.id
+                        if (BCrypt.checkpw(password, it.password)) {
+                            val session = SessionManager.getInstance(this@LoginActivity)
+                            session.currentUserId = it.id
+                            session.saveUserEmail(it.email)
 
-
-                        session.saveUserEmail(it.email)
-
-                        withContext(Dispatchers.Main) {
-                            val intent = Intent(this@LoginActivity, HomeActivity::class.java)
-                            startActivity(intent)
-                            finish()
+                            withContext(Dispatchers.Main) {
+                                val intent = Intent(this@LoginActivity, HomeActivity::class.java)
+                                startActivity(intent)
+                                finish()
+                            }
+                        } else {
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(this@LoginActivity, "Invalid email or password", Toast.LENGTH_SHORT).show()
+                            }
                         }
                     }
                 }
@@ -77,6 +81,7 @@ class LoginActivity : AppCompatActivity() {
                 Toast.makeText(this, "Invalid email or password", Toast.LENGTH_SHORT).show()
             }
         })
+
         tvSignUp.setOnClickListener {
             startActivity(Intent(this, SignUpActivity::class.java))
         }
