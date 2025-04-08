@@ -13,6 +13,8 @@ import com.example.fitnesstrackerapp.R
 import com.example.fitnesstrackerapp.data.database.AppDatabase
 import com.example.fitnesstrackerapp.viewmodel.AuthViewModel
 import com.example.fitnesstrackerapp.viewmodel.AuthViewModelFactory
+import kotlinx.coroutines.*
+import com.example.fitnesstrackerapp.auth.SessionManager
 
 class LoginActivity : AppCompatActivity() {
 
@@ -50,15 +52,31 @@ class LoginActivity : AppCompatActivity() {
             if (success) {
                 Toast.makeText(this, "Login Successful!", Toast.LENGTH_SHORT).show()
                 val email = etEmail.text.toString().trim()
-                val intent = Intent(this, HomeActivity::class.java)
-                intent.putExtra("USER_EMAIL", email)
-                startActivity(intent)
-                finish()
+
+
+                CoroutineScope(Dispatchers.IO).launch {
+                    val user = AppDatabase.getDatabase(this@LoginActivity)
+                        .userDao()
+                        .getUserByEmail(email)
+
+                    user?.let {
+                        val session = SessionManager.getInstance(this@LoginActivity)
+                        session.currentUserId = it.id
+
+
+                        session.saveUserEmail(it.email)
+
+                        withContext(Dispatchers.Main) {
+                            val intent = Intent(this@LoginActivity, HomeActivity::class.java)
+                            startActivity(intent)
+                            finish()
+                        }
+                    }
+                }
             } else {
                 Toast.makeText(this, "Invalid email or password", Toast.LENGTH_SHORT).show()
             }
         })
-
         tvSignUp.setOnClickListener {
             startActivity(Intent(this, SignUpActivity::class.java))
         }
