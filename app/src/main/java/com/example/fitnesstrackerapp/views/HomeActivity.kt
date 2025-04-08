@@ -47,10 +47,17 @@ class HomeActivity : AppCompatActivity() {
 
         val db = AppDatabase.getDatabase(this)
         workoutDao = db.workoutDao()
+        userDao = db.userDao()
 
-        setupLogout()
+        val email = intent.getStringExtra("USER_EMAIL") ?: ""
+        if (email.isNotEmpty()) {
+            getCurrentUserId(email)
+        }
+
+//        setupLogout()
         setupWorkoutsRecycler()
         setupAddWorkoutButton()
+        setupProfileNavigation()
         insertDefaultWorkouts()
     }
 
@@ -61,7 +68,7 @@ class HomeActivity : AppCompatActivity() {
             false
         )
 
-        binding.rvWorkouts.adapter = WorkoutAdapter(defaultWorkouts, { workout ->
+        binding.rvWorkouts.adapter = WorkoutAdapter(emptyList(), { workout ->
             showEditWorkoutDialog(workout)
         }, { workout ->
             showDeleteConfirmationDialog(workout)
@@ -69,18 +76,21 @@ class HomeActivity : AppCompatActivity() {
 
         loadWorkoutsFromDatabase()
     }
-
     private fun loadWorkoutsFromDatabase() {
         CoroutineScope(Dispatchers.IO).launch {
             val workouts = workoutDao.getWorkoutsByUser(currentUserId)
+
+            if (workouts.isEmpty()) {
+                insertDefaultWorkouts()
+            }
+
+            val finalWorkouts = workoutDao.getWorkoutsByUser(currentUserId)
             withContext(Dispatchers.Main) {
-                if (workouts.isNotEmpty()) {
-                    binding.rvWorkouts.adapter = WorkoutAdapter(workouts, { workout ->
-                        showEditWorkoutDialog(workout)
-                    }, { workout ->
-                        showDeleteConfirmationDialog(workout)
-                    })
-                }
+                binding.rvWorkouts.adapter = WorkoutAdapter(finalWorkouts, { workout ->
+                    showEditWorkoutDialog(workout)
+                }, { workout ->
+                    showDeleteConfirmationDialog(workout)
+                })
             }
         }
     }
@@ -185,15 +195,25 @@ class HomeActivity : AppCompatActivity() {
     private fun insertDefaultWorkouts() {
         CoroutineScope(Dispatchers.IO).launch {
             if (workoutDao.getWorkoutsByUser(currentUserId).isEmpty()) {
-                defaultWorkouts.forEach { workoutDao.insertWorkout(it) }
+                defaultWorkouts.forEach { workout ->
+                    workoutDao.insertWorkout(workout.copy(user_id = currentUserId))
+                }
             }
         }
     }
 
-    private fun setupLogout() {
-        binding.btnLogout.setOnClickListener {
-            startActivity(Intent(this, LoginActivity::class.java))
-            finish()
+//    private fun setupLogout() {
+//        binding.btnLogout.setOnClickListener {
+//            currentUserId = -1
+//            startActivity(Intent(this, LoginActivity::class.java))
+//            finish()
+//        }
+//    }
+
+    private fun setupProfileNavigation() {
+        binding.btnProfile.setOnClickListener {
+            val intent = Intent(this, ProfileActivity::class.java)
+            startActivity(intent)
         }
     }
 }

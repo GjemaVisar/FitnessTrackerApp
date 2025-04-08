@@ -49,7 +49,10 @@ class LoginActivity : AppCompatActivity() {
         authViewModel.loginSuccess.observe(this, Observer { success ->
             if (success) {
                 Toast.makeText(this, "Login Successful!", Toast.LENGTH_SHORT).show()
-                startActivity(Intent(this, HomeActivity::class.java))
+                val email = etEmail.text.toString().trim()
+                val intent = Intent(this, HomeActivity::class.java)
+                intent.putExtra("USER_EMAIL", email)
+                startActivity(intent)
                 finish()
             } else {
                 Toast.makeText(this, "Invalid email or password", Toast.LENGTH_SHORT).show()
