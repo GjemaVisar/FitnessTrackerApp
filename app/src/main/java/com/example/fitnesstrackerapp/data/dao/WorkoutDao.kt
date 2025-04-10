@@ -26,5 +26,8 @@ interface WorkoutDao {
 
     @Update
     suspend fun updateNotification(notification: Notification)
+
+    @Query("SELECT * FROM workouts WHERE workout_type = :workoutType AND user_id = :userId LIMIT 1")
+    suspend fun getWorkoutByTypeAndUser(workoutType: String, userId: Int): Workout?
 }
 
