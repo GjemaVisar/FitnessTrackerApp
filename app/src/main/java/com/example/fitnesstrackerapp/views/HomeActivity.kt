@@ -152,34 +152,48 @@ class HomeActivity : AppCompatActivity() {
                 val calories = etCalories.text.toString().toIntOrNull()
 
                 if (workoutType.isNotEmpty() && duration != null && calories != null) {
-                    val newWorkout = Workout(
-                        id = 0,
-                        user_id = currentUserId,
-                        workout_type = workoutType,
-                        duration = duration,
-                        calories_burned = calories,
-                        date = System.currentTimeMillis()
-                    )
-
                     CoroutineScope(Dispatchers.IO).launch {
-                        val workoutId = workoutDao.insertWorkout(newWorkout).toInt()
-                        val workoutWithId = newWorkout.copy(id = workoutId)
+                        try {
+                            val existingWorkout = workoutDao.getWorkoutByTypeAndUser(workoutType, currentUserId)
 
-                        if (switchNotification.isChecked && selectedTimeInMillis > 0) {
-                            withContext(Dispatchers.Main) {
-                                notificationHelper.scheduleWorkoutReminder(workoutWithId, selectedTimeInMillis)
+                            if (existingWorkout != null) {
+                                withContext(Dispatchers.Main) {
+                                    Toast.makeText(this@HomeActivity, "You already have a workout with this name", Toast.LENGTH_SHORT).show()
+                                }
+                            } else {
+                                val newWorkout = Workout(
+                                    id = 0,
+                                    user_id = currentUserId,
+                                    workout_type = workoutType,
+                                    duration = duration,
+                                    calories_burned = calories,
+                                    date = System.currentTimeMillis()
+                                )
+
+                                val workoutId = workoutDao.insertWorkout(newWorkout).toInt()
+                                val workoutWithId = newWorkout.copy(id = workoutId)
+
+                                if (switchNotification.isChecked && selectedTimeInMillis > 0) {
+                                    withContext(Dispatchers.Main) {
+                                        notificationHelper.scheduleWorkoutReminder(workoutWithId, selectedTimeInMillis)
+                                    }
+
+                                    val notification = Notification(
+                                        user_id = currentUserId,
+                                        notification_type = "workout_reminder",
+                                        message = "Reminder for ${workoutType} workout",
+                                        scheduled_time = selectedTimeInMillis
+                                    )
+                                    workoutDao.insertNotification(notification)
+                                }
+
+                                loadWorkoutsFromDatabase()
                             }
-
-                            val notification = Notification(
-                                user_id = currentUserId,
-                                notification_type = "workout_reminder",
-                                message = "Reminder for ${workoutType} workout",
-                                scheduled_time = selectedTimeInMillis
-                            )
-                            workoutDao.insertNotification(notification)
+                        } catch (e: Exception) {
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(this@HomeActivity, "Error adding workout: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+                            }
                         }
-
-                        loadWorkoutsFromDatabase()
                     }
                 } else {
                     Toast.makeText(this, "Please fill in all fields", Toast.LENGTH_SHORT).show()
@@ -189,6 +203,8 @@ class HomeActivity : AppCompatActivity() {
             .create()
             .show()
     }
+
+
 
     private fun showEditWorkoutDialog(workout: Workout) {
         val dialogView = layoutInflater.inflate(R.layout.dialog_add_workout, null)
@@ -206,20 +222,26 @@ class HomeActivity : AppCompatActivity() {
         var selectedTimeInMillis: Long = 0
 
         CoroutineScope(Dispatchers.IO).launch {
-            val existingNotification = workoutDao.getLatestNotificationForUser(currentUserId)
+            try {
+                val existingNotification = workoutDao.getLatestNotificationForUser(currentUserId)
 
-            withContext(Dispatchers.Main) {
-                existingNotification?.let { notification ->
-                    selectedTimeInMillis = notification.scheduled_time
-                    val calendar = Calendar.getInstance().apply { timeInMillis = selectedTimeInMillis }
-                    val hour = calendar.get(Calendar.HOUR_OF_DAY)
-                    val minute = calendar.get(Calendar.MINUTE)
-                    val amPm = if (hour < 12) "AM" else "PM"
-                    val displayHour = if (hour > 12) hour - 12 else hour
-                    etNotificationTime.setText("$displayHour:$minute $amPm")
-                    switchNotification.isChecked = true
-                } ?: run {
-                    timePickerLayout.visibility = View.GONE
+                withContext(Dispatchers.Main) {
+                    existingNotification?.let { notification ->
+                        selectedTimeInMillis = notification.scheduled_time
+                        val calendar = Calendar.getInstance().apply { timeInMillis = selectedTimeInMillis }
+                        val hour = calendar.get(Calendar.HOUR_OF_DAY)
+                        val minute = calendar.get(Calendar.MINUTE)
+                        val amPm = if (hour < 12) "AM" else "PM"
+                        val displayHour = if (hour > 12) hour - 12 else hour
+                        etNotificationTime.setText("$displayHour:$minute $amPm")
+                        switchNotification.isChecked = true
+                    } ?: run {
+                        timePickerLayout.visibility = View.GONE
+                    }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@HomeActivity, "Error loading notification: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -259,35 +281,48 @@ class HomeActivity : AppCompatActivity() {
                 val updatedCalories = etCalories.text.toString().toIntOrNull()
 
                 if (updatedType.isNotEmpty() && updatedDuration != null && updatedCalories != null) {
-                    val updatedWorkout = workout.copy(
-                        workout_type = updatedType,
-                        duration = updatedDuration,
-                        calories_burned = updatedCalories
-                    )
-
                     CoroutineScope(Dispatchers.IO).launch {
-                        workoutDao.updateWorkout(updatedWorkout)
-
-                        if (switchNotification.isChecked && selectedTimeInMillis > 0) {
-                            notificationHelper.scheduleWorkoutReminder(updatedWorkout, selectedTimeInMillis)
-
-                            val notification = Notification(
-                                user_id = currentUserId,
-                                notification_type = "workout_reminder",
-                                message = "Reminder for ${updatedWorkout.workout_type} workout",
-                                scheduled_time = selectedTimeInMillis
-                            )
-
-
-                            val existing = workoutDao.getLatestNotificationForUser(currentUserId)
-                            if (existing != null) {
-                                workoutDao.updateNotification(notification.copy(id = existing.id))
-                            } else {
-                                workoutDao.insertNotification(notification)
-                            }
+                                                val existingWorkout = workoutDao.getWorkoutsByUser(currentUserId).find {
+                            it.workout_type.equals(updatedType, ignoreCase = true) && it.id != workout.id
                         }
 
-                        loadWorkoutsFromDatabase()
+                        withContext(Dispatchers.Main) {
+                            if (existingWorkout != null) {
+                                Toast.makeText(this@HomeActivity, "Workout type '$updatedType' already exists!", Toast.LENGTH_SHORT).show()
+                            } else {
+                                val updatedWorkout = workout.copy(
+                                    workout_type = updatedType,
+                                    duration = updatedDuration,
+                                    calories_burned = updatedCalories
+                                )
+
+                                try {
+                                    workoutDao.updateWorkout(updatedWorkout)
+
+                                    if (switchNotification.isChecked && selectedTimeInMillis > 0) {
+                                        notificationHelper.scheduleWorkoutReminder(updatedWorkout, selectedTimeInMillis)
+
+                                        val notification = Notification(
+                                            user_id = currentUserId,
+                                            notification_type = "workout_reminder",
+                                            message = "Reminder for ${updatedWorkout.workout_type} workout",
+                                            scheduled_time = selectedTimeInMillis
+                                        )
+
+                                        val existing = workoutDao.getLatestNotificationForUser(currentUserId)
+                                        if (existing != null) {
+                                            workoutDao.updateNotification(notification.copy(id = existing.id))
+                                        } else {
+                                            workoutDao.insertNotification(notification)
+                                        }
+                                    }
+
+                                    loadWorkoutsFromDatabase()
+                                } catch (e: Exception) {
+                                    Toast.makeText(this@HomeActivity, "Error saving workout: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        }
                     }
                 } else {
                     Toast.makeText(this, "Please fill in all fields", Toast.LENGTH_SHORT).show()
@@ -297,6 +332,8 @@ class HomeActivity : AppCompatActivity() {
             .create()
             .show()
     }
+
+
 
 
     private fun showDeleteConfirmationDialog(workout: Workout) {

@@ -38,47 +38,64 @@ class AuthViewModel(private val userDao: UserDao) : ViewModel() {
 
     private fun loginUser(email: String, password: String) {
         viewModelScope.launch(Dispatchers.IO) {
-            val user = userDao.getUserByEmail(email)
+            try {
+                val user = userDao.getUserByEmail(email)
 
-            if (user != null && BCrypt.checkpw(password, user.password)) {
-                _loginSuccess.postValue(true)
-            } else {
+                if (user != null && BCrypt.checkpw(password, user.password)) {
+                    _loginSuccess.postValue(true)
+                } else {
+                    _loginSuccess.postValue(false)
+                }
+            } catch (e: Exception) {
                 _loginSuccess.postValue(false)
+                e.printStackTrace()
             }
         }
     }
 
     fun validateRegister(email: String, password: String, confirmPassword: String) {
-        _emailError.value = when {
-            email.isEmpty() -> "Email cannot be empty"
-            !ValidationUtils.isValidEmail(email) -> "Invalid email format"
-            else -> null
-        }
+        try {
+            _emailError.value = when {
+                email.isEmpty() -> "Email cannot be empty"
+                !ValidationUtils.isValidEmail(email) -> "Invalid email format"
+                else -> null
+            }
 
-        _passwordError.value = when {
-            password.isEmpty() -> "Password cannot be empty"
-            password.length < 8 -> "Password must be at least 8 characters"
-            !ValidationUtils.isValidPassword(password) -> "Password must be 8+ characters, 1 uppercase, 1 number, 1 special character"
-            password != confirmPassword -> "Passwords do not match"
-            else -> null
-        }
+            _passwordError.value = when {
+                password.isEmpty() -> "Password cannot be empty"
+                password.length < 8 -> "Password must be at least 8 characters"
+                !ValidationUtils.isValidPassword(password) -> "Password must be 8+ characters, 1 uppercase, 1 number, 1 special character"
+                password != confirmPassword -> "Passwords do not match"
+                else -> null
+            }
 
-        if (_emailError.value == null && _passwordError.value == null) {
-            checkDuplicateEmailAndRegister(email, password)
+            if (_emailError.value == null && _passwordError.value == null) {
+                checkDuplicateEmailAndRegister(email, password)
+            }
+        } catch (e: Exception) {
+            _emailError.value = "An unexpected error occurred. Please try again."
+            e.printStackTrace()
         }
     }
+
 
     private fun checkDuplicateEmailAndRegister(email: String, password: String) {
         viewModelScope.launch(Dispatchers.IO) {
-            val existingUser = userDao.getUserByEmail(email)
-            if (existingUser != null) {
-                _emailError.postValue("Email is already taken")
-            } else {
-                val hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt())
-                val user = User(email = email, password = hashedPassword)
-                userDao.insertUser(user)
-                _registerSuccess.postValue(true)
+            try {
+                val existingUser = userDao.getUserByEmail(email)
+                if (existingUser != null) {
+                    _emailError.postValue("Email is already taken")
+                } else {
+                    val hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt())
+                    val user = User(email = email, password = hashedPassword)
+                    userDao.insertUser(user)
+                    _registerSuccess.postValue(true)
+                }
+            } catch (e: Exception) {
+                _emailError.postValue("An error occurred while registering. Please try again later.")
+                e.printStackTrace()
             }
         }
     }
+
 }
