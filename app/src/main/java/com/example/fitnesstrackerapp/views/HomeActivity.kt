@@ -176,6 +176,7 @@ class HomeActivity : AppCompatActivity() {
                                 message = "Reminder for ${workoutType} workout",
                                 scheduled_time = selectedTimeInMillis
                             )
+                            workoutDao.insertNotification(notification)
                         }
 
                         loadWorkoutsFromDatabase()
@@ -202,7 +203,52 @@ class HomeActivity : AppCompatActivity() {
         etDuration.setText(workout.duration.toString())
         etCalories.setText(workout.calories_burned.toString())
 
-        timePickerLayout.visibility = View.GONE
+        var selectedTimeInMillis: Long = 0
+
+        CoroutineScope(Dispatchers.IO).launch {
+            val existingNotification = workoutDao.getLatestNotificationForUser(currentUserId)
+
+            withContext(Dispatchers.Main) {
+                existingNotification?.let { notification ->
+                    selectedTimeInMillis = notification.scheduled_time
+                    val calendar = Calendar.getInstance().apply { timeInMillis = selectedTimeInMillis }
+                    val hour = calendar.get(Calendar.HOUR_OF_DAY)
+                    val minute = calendar.get(Calendar.MINUTE)
+                    val amPm = if (hour < 12) "AM" else "PM"
+                    val displayHour = if (hour > 12) hour - 12 else hour
+                    etNotificationTime.setText("$displayHour:$minute $amPm")
+                    switchNotification.isChecked = true
+                } ?: run {
+                    timePickerLayout.visibility = View.GONE
+                }
+            }
+        }
+
+        switchNotification.setOnCheckedChangeListener { _, isChecked ->
+            timePickerLayout.visibility = if (isChecked) View.VISIBLE else View.GONE
+        }
+
+        etNotificationTime.setOnClickListener {
+            val calendar = Calendar.getInstance()
+            TimePickerDialog(
+                this,
+                { _, hourOfDay, minute ->
+                    val selectedCalendar = Calendar.getInstance().apply {
+                        set(Calendar.HOUR_OF_DAY, hourOfDay)
+                        set(Calendar.MINUTE, minute)
+                        set(Calendar.SECOND, 0)
+                    }
+                    selectedTimeInMillis = selectedCalendar.timeInMillis
+
+                    val amPm = if (hourOfDay < 12) "AM" else "PM"
+                    val displayHour = if (hourOfDay > 12) hourOfDay - 12 else hourOfDay
+                    etNotificationTime.setText("$displayHour:$minute $amPm")
+                },
+                calendar.get(Calendar.HOUR_OF_DAY),
+                calendar.get(Calendar.MINUTE),
+                false
+            ).show()
+        }
 
         AlertDialog.Builder(this)
             .setTitle("Edit Workout")
@@ -221,6 +267,26 @@ class HomeActivity : AppCompatActivity() {
 
                     CoroutineScope(Dispatchers.IO).launch {
                         workoutDao.updateWorkout(updatedWorkout)
+
+                        if (switchNotification.isChecked && selectedTimeInMillis > 0) {
+                            notificationHelper.scheduleWorkoutReminder(updatedWorkout, selectedTimeInMillis)
+
+                            val notification = Notification(
+                                user_id = currentUserId,
+                                notification_type = "workout_reminder",
+                                message = "Reminder for ${updatedWorkout.workout_type} workout",
+                                scheduled_time = selectedTimeInMillis
+                            )
+
+
+                            val existing = workoutDao.getLatestNotificationForUser(currentUserId)
+                            if (existing != null) {
+                                workoutDao.updateNotification(notification.copy(id = existing.id))
+                            } else {
+                                workoutDao.insertNotification(notification)
+                            }
+                        }
+
                         loadWorkoutsFromDatabase()
                     }
                 } else {
@@ -231,6 +297,7 @@ class HomeActivity : AppCompatActivity() {
             .create()
             .show()
     }
+
 
     private fun showDeleteConfirmationDialog(workout: Workout) {
         AlertDialog.Builder(this)
