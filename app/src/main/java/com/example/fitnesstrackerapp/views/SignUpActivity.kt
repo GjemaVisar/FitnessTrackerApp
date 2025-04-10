@@ -32,6 +32,7 @@ class SignUpActivity : AppCompatActivity() {
         val etConfirmPassword = findViewById<EditText>(R.id.etConfirmPassword)
         val btnSignUp = findViewById<Button>(R.id.btnSignUp)
         val btnLogin = findViewById<TextView>(R.id.btnLogin)
+        val etName = findViewById<EditText>(R.id.etName)
 
         authViewModel.emailError.observe(this, Observer { error ->
             etEmail.error = error
@@ -51,9 +52,16 @@ class SignUpActivity : AppCompatActivity() {
         })
 
         btnSignUp.setOnClickListener {
+            val name = etName.text.toString().trim()
             val email = etEmail.text.toString().trim()
             val password = etPassword.text.toString().trim()
             val confirmPassword = etConfirmPassword.text.toString().trim()
+
+            if (name.isEmpty()) {
+                etName.error = "Full name cannot be empty"
+                return@setOnClickListener
+            }
+
             authViewModel.validateRegister(email, password, confirmPassword)
         }
 
