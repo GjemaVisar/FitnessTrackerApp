@@ -18,5 +18,6 @@ data class Workout(
     val workout_type: String,
     val duration: Int,
     val calories_burned: Int,
-    val date: Long = System.currentTimeMillis()
+    val date: Long = System.currentTimeMillis(),
+
 )
