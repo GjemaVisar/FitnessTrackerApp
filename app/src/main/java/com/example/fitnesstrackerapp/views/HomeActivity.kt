@@ -47,7 +47,6 @@ class HomeActivity : AppCompatActivity() {
         setupWorkoutsRecycler()
         setupAddWorkoutButton()
         setupProfileNavigation()
-        insertDefaultWorkouts()
     }
 
     private fun setupWorkoutsRecycler() {
