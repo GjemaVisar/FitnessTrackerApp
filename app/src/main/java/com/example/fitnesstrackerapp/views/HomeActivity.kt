@@ -1,7 +1,10 @@
 package com.example.fitnesstrackerapp.views
 
+import android.app.TimePickerDialog
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
+import android.view.View
 import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
@@ -12,16 +15,23 @@ import com.example.fitnesstrackerapp.adapters.WorkoutAdapter
 import com.example.fitnesstrackerapp.auth.SessionManager
 import com.example.fitnesstrackerapp.data.database.AppDatabase
 import com.example.fitnesstrackerapp.data.dao.WorkoutDao
+import com.example.fitnesstrackerapp.data.entities.Notification
 import com.example.fitnesstrackerapp.data.entities.Workout
 import com.example.fitnesstrackerapp.databinding.ActivityHomeBinding
+import com.example.fitnesstrackerapp.utils.NotificationHelper
+import com.google.android.material.switchmaterial.SwitchMaterial
+import com.google.android.material.textfield.TextInputEditText
+import com.google.android.material.textfield.TextInputLayout
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.*
 
 class HomeActivity : AppCompatActivity() {
     private lateinit var binding: ActivityHomeBinding
     private lateinit var workoutDao: WorkoutDao
+    private lateinit var notificationHelper: NotificationHelper
     private var currentUserId: Int = -1
 
     private val defaultWorkouts = listOf(
@@ -30,10 +40,14 @@ class HomeActivity : AppCompatActivity() {
         Workout(0, 1, "Swimming", 60, 500)
     )
 
+    private val NOTIFICATION_PERMISSION_REQUEST_CODE = 1234
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityHomeBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        notificationHelper = NotificationHelper(this)
 
         currentUserId = SessionManager.getInstance(this).currentUserId ?: run {
             startActivity(Intent(this, LoginActivity::class.java))
@@ -43,6 +57,13 @@ class HomeActivity : AppCompatActivity() {
 
         val db = AppDatabase.getDatabase(this)
         workoutDao = db.workoutDao()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            requestPermissions(
+                arrayOf(android.Manifest.permission.POST_NOTIFICATIONS),
+                NOTIFICATION_PERMISSION_REQUEST_CODE
+            )
+        }
 
         setupWorkoutsRecycler()
         setupAddWorkoutButton()
@@ -90,6 +111,37 @@ class HomeActivity : AppCompatActivity() {
         val etWorkoutType = dialogView.findViewById<EditText>(R.id.etWorkoutType)
         val etDuration = dialogView.findViewById<EditText>(R.id.etDuration)
         val etCalories = dialogView.findViewById<EditText>(R.id.etCalories)
+        val switchNotification = dialogView.findViewById<SwitchMaterial>(R.id.switchNotification)
+        val timePickerLayout = dialogView.findViewById<TextInputLayout>(R.id.timePickerLayout)
+        val etNotificationTime = dialogView.findViewById<TextInputEditText>(R.id.etNotificationTime)
+
+        var selectedTimeInMillis: Long = 0
+
+        switchNotification.setOnCheckedChangeListener { _, isChecked ->
+            timePickerLayout.visibility = if (isChecked) View.VISIBLE else View.GONE
+        }
+
+        etNotificationTime.setOnClickListener {
+            val calendar = Calendar.getInstance()
+            TimePickerDialog(
+                this,
+                { _, hourOfDay, minute ->
+                    val selectedCalendar = Calendar.getInstance().apply {
+                        set(Calendar.HOUR_OF_DAY, hourOfDay)
+                        set(Calendar.MINUTE, minute)
+                        set(Calendar.SECOND, 0)
+                    }
+                    selectedTimeInMillis = selectedCalendar.timeInMillis
+
+                    val amPm = if (hourOfDay < 12) "AM" else "PM"
+                    val displayHour = if (hourOfDay > 12) hourOfDay - 12 else hourOfDay
+                    etNotificationTime.setText("$displayHour:$minute $amPm")
+                },
+                calendar.get(Calendar.HOUR_OF_DAY),
+                calendar.get(Calendar.MINUTE),
+                false
+            ).show()
+        }
 
         AlertDialog.Builder(this)
             .setTitle("Add New Workout")
@@ -110,7 +162,22 @@ class HomeActivity : AppCompatActivity() {
                     )
 
                     CoroutineScope(Dispatchers.IO).launch {
-                        workoutDao.insertWorkout(newWorkout)
+                        val workoutId = workoutDao.insertWorkout(newWorkout).toInt()
+                        val workoutWithId = newWorkout.copy(id = workoutId)
+
+                        if (switchNotification.isChecked && selectedTimeInMillis > 0) {
+                            withContext(Dispatchers.Main) {
+                                notificationHelper.scheduleWorkoutReminder(workoutWithId, selectedTimeInMillis)
+                            }
+
+                            val notification = Notification(
+                                user_id = currentUserId,
+                                notification_type = "workout_reminder",
+                                message = "Reminder for ${workoutType} workout",
+                                scheduled_time = selectedTimeInMillis
+                            )
+                        }
+
                         loadWorkoutsFromDatabase()
                     }
                 } else {
@@ -127,10 +194,15 @@ class HomeActivity : AppCompatActivity() {
         val etWorkoutType = dialogView.findViewById<EditText>(R.id.etWorkoutType)
         val etDuration = dialogView.findViewById<EditText>(R.id.etDuration)
         val etCalories = dialogView.findViewById<EditText>(R.id.etCalories)
+        val switchNotification = dialogView.findViewById<SwitchMaterial>(R.id.switchNotification)
+        val timePickerLayout = dialogView.findViewById<TextInputLayout>(R.id.timePickerLayout)
+        val etNotificationTime = dialogView.findViewById<TextInputEditText>(R.id.etNotificationTime)
 
         etWorkoutType.setText(workout.workout_type)
         etDuration.setText(workout.duration.toString())
         etCalories.setText(workout.calories_burned.toString())
+
+        timePickerLayout.visibility = View.GONE
 
         AlertDialog.Builder(this)
             .setTitle("Edit Workout")

@@ -6,7 +6,7 @@ import androidx.room.*
 @Dao
 interface WorkoutDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertWorkout(workout: Workout)
+    suspend fun insertWorkout(workout: Workout): Long
 
     @Query("SELECT * FROM workouts WHERE user_id = :userId")
     suspend fun getWorkoutsByUser(userId: Int): List<Workout>
@@ -16,5 +16,5 @@ interface WorkoutDao {
 
     @Delete
     suspend fun deleteWorkout(workout: Workout)
-
 }
+
