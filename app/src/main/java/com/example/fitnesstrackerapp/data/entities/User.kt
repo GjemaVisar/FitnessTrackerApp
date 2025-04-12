@@ -9,5 +9,7 @@ data class User(
     val email: String,
     val password: String,
     val is_2fa_enabled: Int = 0,
-    val created_at: Long = System.currentTimeMillis()
+    val created_at: Long = System.currentTimeMillis(),
+    var reset_token: String? = null,
+    var reset_token_expiry: Long? = null
 )

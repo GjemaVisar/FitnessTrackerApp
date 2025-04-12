@@ -15,6 +15,7 @@ import com.example.fitnesstrackerapp.viewmodel.AuthViewModel
 import com.example.fitnesstrackerapp.viewmodel.AuthViewModelFactory
 import kotlinx.coroutines.*
 import com.example.fitnesstrackerapp.auth.SessionManager
+import com.example.fitnesstrackerapp.utils.ValidationUtils
 import org.mindrot.jbcrypt.BCrypt
 
 class LoginActivity : AppCompatActivity() {
@@ -34,11 +35,23 @@ class LoginActivity : AppCompatActivity() {
         val etPassword = findViewById<EditText>(R.id.etPassword)
         val btnLogin = findViewById<Button>(R.id.btnLogin)
         val tvSignUp = findViewById<TextView>(R.id.btnSignUp)
+        val tvForgotPassword = findViewById<TextView>(R.id.tvForgotPassword)
 
         btnLogin.setOnClickListener {
             val email = etEmail.text.toString().trim()
             val password = etPassword.text.toString().trim()
             authViewModel.validateLogin(email, password)
+        }
+
+        tvForgotPassword.setOnClickListener {
+            val email = etEmail.text.toString().trim()
+            val intent = Intent(this, ForgotPasswordActivity::class.java)
+
+            if (email.isNotEmpty() && ValidationUtils.isValidEmail(email)) {
+                intent.putExtra("email", email)
+            }
+
+            startActivity(intent)
         }
 
         authViewModel.emailError.observe(this, Observer { error ->

@@ -16,16 +16,16 @@ import com.example.fitnesstrackerapp.viewmodel.AuthViewModelFactory
 
 class SignUpActivity : AppCompatActivity() {
 
-    private val authViewModel: AuthViewModel by lazy {
-        ViewModelProvider(
-            this,
-            AuthViewModelFactory(AppDatabase.Companion.getDatabase(this).userDao())
-        ).get(AuthViewModel::class.java)
-    }
+    private lateinit var authViewModel: AuthViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_sign_up)
+
+        authViewModel = ViewModelProvider(
+            this,
+            AuthViewModelFactory(AppDatabase.getDatabase(this).userDao())
+        ).get(AuthViewModel::class.java)
 
         val etEmail = findViewById<EditText>(R.id.etEmail)
         val etPassword = findViewById<EditText>(R.id.etPassword)
@@ -35,19 +35,18 @@ class SignUpActivity : AppCompatActivity() {
         val etName = findViewById<EditText>(R.id.etName)
 
         authViewModel.emailError.observe(this, Observer { error ->
-            etEmail.error = error
+            error?.let { etEmail.error = it }
         })
 
         authViewModel.passwordError.observe(this, Observer { error ->
-            etPassword.error = error
+            error?.let { etPassword.error = it }
         })
 
         authViewModel.registerSuccess.observe(this, Observer { success ->
             if (success) {
                 Toast.makeText(this, "Registration successful!", Toast.LENGTH_SHORT).show()
                 startActivity(Intent(this, LoginActivity::class.java))
-            } else {
-                Toast.makeText(this, "Registration failed! Email may already be used.", Toast.LENGTH_SHORT).show()
+                finish()
             }
         })
 
@@ -62,11 +61,12 @@ class SignUpActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
 
-            authViewModel.validateRegister(email, password, confirmPassword)
+            authViewModel.validateRegister(email, password, confirmPassword, name)
         }
 
         btnLogin.setOnClickListener {
             startActivity(Intent(this, LoginActivity::class.java))
+            finish()
         }
     }
 }
