@@ -29,5 +29,8 @@ interface WorkoutDao {
 
     @Query("SELECT * FROM workouts WHERE workout_type = :workoutType AND user_id = :userId LIMIT 1")
     suspend fun getWorkoutByTypeAndUser(workoutType: String, userId: Int): Workout?
+
+    @Query("SELECT * FROM workouts WHERE user_id = :userId AND date BETWEEN :startDate AND :endDate ORDER BY date DESC")
+    fun getWorkoutsByUserAndDateRange(userId: Int, startDate: Long, endDate: Long): List<Workout>
 }
 

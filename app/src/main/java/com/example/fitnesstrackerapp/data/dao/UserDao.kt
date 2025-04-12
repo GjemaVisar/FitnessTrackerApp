@@ -14,6 +14,12 @@ interface UserDao {
     @Query("SELECT * FROM users WHERE id = :userId")
     suspend fun getUserById(userId: Int): User?
 
+    @Query("UPDATE users SET password = :newPassword WHERE id = :userId")
+    suspend fun updatePassword(userId: Int, newPassword: String)
+
+    @Update
+    suspend fun updateUser(user: User)
+
     @Query("UPDATE users SET reset_token = :token, reset_token_expiry = :expiry WHERE email = :email")
     suspend fun setResetToken(email: String, token: String, expiry: Long)
 
