@@ -2,16 +2,20 @@ package com.example.fitnesstrackerapp.views
 
 import android.content.Intent
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.example.fitnesstrackerapp.auth.SessionManager
 import com.example.fitnesstrackerapp.databinding.ActivityProfileBinding
+import com.example.fitnesstrackerapp.viewmodel.AuthViewModel
+import com.google.android.material.button.MaterialButton
 
 class ProfileActivity : AppCompatActivity() {
     private lateinit var binding: ActivityProfileBinding
     private var currentUserId: Int = -1
+    private lateinit var profileViewModel: AuthViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -40,6 +44,8 @@ class ProfileActivity : AppCompatActivity() {
             })
             finish()
         }
+
+
     }
 
     private fun setupWindowInsets() {

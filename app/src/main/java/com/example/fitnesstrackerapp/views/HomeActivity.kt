@@ -96,6 +96,29 @@ class HomeActivity : AppCompatActivity() {
                 }, { workout ->
                     showDeleteConfirmationDialog(workout)
                 })
+                updateCalorieSummary()
+            }
+        }
+    }
+
+    private fun updateCalorieSummary() {
+        CoroutineScope(Dispatchers.IO).launch {
+            val calendar = Calendar.getInstance().apply {
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }
+            val startOfDay = calendar.timeInMillis
+            val endOfDay = startOfDay + 24 * 60 * 60 * 1000
+
+            val workouts = workoutDao.getWorkoutsByUserAndDateRange(currentUserId, startOfDay, endOfDay)
+            val totalCalories = workouts.sumOf { it.calories_burned }
+            val workoutCount = workouts.size
+
+            withContext(Dispatchers.Main) {
+                binding.tvTotalCalories.text = "$totalCalories kcal"
+                binding.tvWorkoutCount.text = workoutCount.toString()
             }
         }
     }
@@ -204,8 +227,6 @@ class HomeActivity : AppCompatActivity() {
             .show()
     }
 
-
-
     private fun showEditWorkoutDialog(workout: Workout) {
         val dialogView = layoutInflater.inflate(R.layout.dialog_add_workout, null)
         val etWorkoutType = dialogView.findViewById<EditText>(R.id.etWorkoutType)
@@ -282,7 +303,7 @@ class HomeActivity : AppCompatActivity() {
 
                 if (updatedType.isNotEmpty() && updatedDuration != null && updatedCalories != null) {
                     CoroutineScope(Dispatchers.IO).launch {
-                                                val existingWorkout = workoutDao.getWorkoutsByUser(currentUserId).find {
+                        val existingWorkout = workoutDao.getWorkoutsByUser(currentUserId).find {
                             it.workout_type.equals(updatedType, ignoreCase = true) && it.id != workout.id
                         }
 
@@ -333,9 +354,6 @@ class HomeActivity : AppCompatActivity() {
             .show()
     }
 
-
-
-
     private fun showDeleteConfirmationDialog(workout: Workout) {
         AlertDialog.Builder(this)
             .setTitle("Delete Workout")
@@ -343,7 +361,9 @@ class HomeActivity : AppCompatActivity() {
             .setPositiveButton("Yes") { _, _ ->
                 CoroutineScope(Dispatchers.IO).launch {
                     workoutDao.deleteWorkout(workout)
-                    loadWorkoutsFromDatabase()
+                    withContext(Dispatchers.Main) {
+                        loadWorkoutsFromDatabase()
+                    }
                 }
             }
             .setNegativeButton("No", null)
